@@ -1,5 +1,7 @@
-$(document).ready(function() {
-	$('textarea.hints:not(.hints-processed)').live('focus', function(){
+(function(){
+
+var hints = {
+	construct: function(){
 		// This has to go first because Firefox seems to screw up (ignores our setSelectionRange below) otherwise.
 		if ($(this).hasClass('debug')) {
 			var z = $(this).css('z-index');
@@ -8,6 +10,14 @@ $(document).ready(function() {
 			var p = $(this).css('position');
 			if (p == 'static') p = 'relative';
 			$(this).css({'z-index': Math.max(10, z), 'position': p});
+		}
+
+		// Mozilla/Firefox (3.6.7 linux/ubuntu only?) does not support nowrap.
+		if (this.nodeName == 'TEXTAREA' && $(this).css('white-space') == 'nowrap' && $.browser.mozilla) {
+			isWrap = true;
+			var css = {'white-space': 'pre-wrap', 'word-wrap': 'break-word'};
+			$(this).css(css);
+			$(id).css(css);
 		}
 
 		// This is first time we're focused. Browsers seem to always go to end of text, when focus is done with keyboard (TAB key :).
@@ -29,16 +39,23 @@ $(document).ready(function() {
 			$(this).attr('id', id);
 		}
 
-		$(this).before($('<div class="_calculator" id="'+id+'_calculator"></div>'));
-		$(this).before($('<div class="_popup" id="'+id+'_popup"></div>'));
+		var exists = $('div#'+id+'_calculator');
+		if (!exists || exists.length < 1) {
+			$(this).before($('<div class="_calculator" id="'+id+'_calculator"></div>'));
+			$('div#'+id+'_calculator').css({'position': 'absolute', 'z-index' : '0', 'top': 0, 'left': -9000});
+		}
 
-		$('div#'+id+'_calculator').css({'position': 'absolute', 'z-index' : '0', 'top': 0, 'left': -9000});
-		$('div#'+id+'_popup').css({'position': 'absolute', 'z-index': '99'}).hide();
+		exists = $('div#'+id+'_popup');
+		if (!exists || exists.length < 1) {
+			$(this).before($('<div class="_popup" id="'+id+'_popup"></div>'));
+			$('div#'+id+'_popup').css({'position': 'absolute', 'z-index': '99'}).hide();
+		}
 
-		$(this).addClass('hints-processed').focus(); // Call focus, so first-time focus is handled further
-	});
+		$(this).addClass('hints-ready').unbind('focus', hints.start).bind('focus', hints.start);
+	},
+	start: function(){
+		if (!$(this).hasClass('hints-ready')) hints.construct.call(this);
 
-	$('textarea.hints.hints-processed').live('focus', function(){
 		var style = {};
 		for (a in {'width':'', 'height':'', 'border-left-width':'', 'border-top-width':'', 'border-left-style':'', 'border-top-style':'', 'border-right-width':'', 'border-bottom-width':'', 'border-right-style':'', 'border-bottom-style':'', 'padding-top':'', 'padding-left':'', 'padding-bottom':'', 'padding-right':'', 'font-size':'', 'font-family':'', 'font-weight':'', 'font-style':'', 'font-variant':'', 'letter-spacing':'', 'line-height':'', 'vertical-align':'', 'text-align':'', 'text-indent':'', 'text-decoration':'', 'white-space':'', 'word-spacing':''}) {
 			style[a] = $(this).css(a);
@@ -56,7 +73,10 @@ $(document).ready(function() {
 		if ($(this).hasClass('debug')) {
 			$('div#'+$(this).attr('id')+'_calculator').css($(this).offset());
 		}
-	}).live('keyup', function() {
+
+		$(this).bind('keyup', hints.process).bind('blur', hints.stop);
+	},
+	process: function(){
 		var text = $(this).val();
 		var pos = this.selectionStart;
 
@@ -70,7 +90,8 @@ $(document).ready(function() {
 		// (or at which next new line starts being counted?).
 		// It is like there were two "frames" in memory. One with real text, and other which is virtual and counts every \n twice.
 		// With each \n they are more and more misaligned. That would explain why "jumpy" character moves to the beginning of line with every new line.
-		if ($.browser.opera) {
+		// UPDATE: looks like 10.61 fixed this problem.
+		if ($.browser.opera && $.browser.version < 10.61) {
 			// First get whole value and replace every new line with our unlikely to happen string that has length equal 2
 			// (because Opera's selectionStart/End calculator seems to count every new line as two characters, even tough
 			// all other functions like text.length, replace, match, etc... count them correctly as one character).
@@ -99,14 +120,6 @@ $(document).ready(function() {
 		var id = 'div#'+$(this).attr('id')+'_calculator';
 
 		var isWrap = ($(this).css('white-space') != 'nowrap' && this.nodeName == 'TEXTAREA' ? true : false);
-
-		// Mozilla/Firefox (3.6.7 linux/ubuntu only?) does not support nowrap.
-		if (this.nodeName == 'TEXTAREA' && !isWrap && $.browser.mozilla) {
-			isWrap = true;
-			var css = {'white-space': 'pre-wrap', 'word-wrap': 'break-word'};
-			$(this).css(css);
-			$(id).css(css);
-		}
 
 		var x = 0;
 		var y = 0;
@@ -174,7 +187,45 @@ $(document).ready(function() {
 		offset.left = Math.max(offset.left, offset.left + (x - this.scrollLeft));
 		offset.top += y - this.scrollTop;
 		$('div#'+$(this).attr('id')+'_popup').css(offset).html(this.scrollLeft+' pre: '+editedLinePre+'<br />edited: '+editedPre+'<br />post: '+editedPost).slideDown('fast');
-	}).live('blur', function(){
+	},
+	stop: function(){
+		$(this).unbind('keyup', hints.process).unbind('blur', hints.stop);
 		$('div#'+$(this).attr('id')+'_popup').slideUp('fast');
+	},
+	destruct: function(){
+		hints.stop.call(this);
+		$(this).unbind('focus', hints.start).removeClass('hints-ready');
+		$('div#'+$(this).attr('id')+'_popup').remove();
+		$('div#'+$(this).attr('id')+'_calculator').remove();
+	}
+};
+
+
+	// If both enabled is empty, returns current state of enabled.
+	jQuery.fn.hints = function(enabled, options) {
+		if (undefined == enabled) {
+			return $(this).hasClass('hints-ready');
+		}
+		else if (enabled == true) {
+			return this.each(function() {
+				if (!$(this).hasClass('hints-ready')) hints.construct.call(this);
+				$(this).bind('focus', hints.start);
+			});
+		}
+		else {
+			return this.each(function() {
+				hints.destruct.call(this);
+			});
+		}
+	};
+})();
+
+$(document).ready(function() {
+	$('textarea.hints:not(.hints-ready)').live('focus', function(){
+		$(this).hints(true).focus();
+	});
+
+	$('input[type=text].hints:not(.hints-ready)').live('focus', function(){
+		$(this).hints(true).focus();
 	});
 });
