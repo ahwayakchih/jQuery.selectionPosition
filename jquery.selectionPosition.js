@@ -1,3 +1,11 @@
+/*!
+ * jQuery selectionPosition Library v1.0
+ *
+ * Copyright 2011, Marcin Konicki
+ * Released under the MIT license.
+ *
+ */
+
 (function(){
 
 	var selectionPosition = {
