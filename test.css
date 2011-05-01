@@ -1,0 +1,33 @@
+html {
+	margin: 0px;
+	padding: 0px;
+	border: 0px none;
+	background: #000;
+	font-size: 12px;
+	font-family: 'Verdana', sans-serif;
+	color: #fff;
+}
+
+body {
+	width: 80%;
+	margin: 0px auto;
+	padding: 2em;
+	border: 0px none;
+	background: #fff;
+	color: #000;
+}
+
+textarea, input {
+	font-family: 'Courier New', monospace;
+	opacity: 0.5;
+}
+
+div._calculator {
+	background: #f0f0f0;
+	color: red;
+}
+
+div._popup {
+	background: #ffffcc;
+	color: #000;
+}
