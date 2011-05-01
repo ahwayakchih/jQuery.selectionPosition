@@ -6,7 +6,7 @@
  *
  */
 
-(function(){
+(function($){
 
 	var selectionPosition = {
 		construct: function(){
