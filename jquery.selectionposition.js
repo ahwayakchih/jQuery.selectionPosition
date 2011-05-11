@@ -6,6 +6,8 @@
  *
  */
 
+// TODO: process() should support CSS:direction property (are different directions written different way in textarea and input fields?).
+
 (function($){
 
 	var selectionPosition = {
@@ -58,7 +60,7 @@
 			if (!$(this).hasClass('selectionPosition-ready')) selectionPosition.construct.call(this);
 
 			var style = {};
-			for (a in {'width':'', 'height':'', 'border-left-width':'', 'border-top-width':'', 'border-left-style':'', 'border-top-style':'', 'border-right-width':'', 'border-bottom-width':'', 'border-right-style':'', 'border-bottom-style':'', 'padding-top':'', 'padding-left':'', 'padding-bottom':'', 'padding-right':'', 'font-size':'', 'font-family':'', 'font-weight':'', 'font-style':'', 'font-variant':'', 'letter-spacing':'', 'line-height':'', 'vertical-align':'', 'text-align':'', 'text-indent':'', 'text-decoration':'', 'white-space':'', 'word-spacing':''}) {
+			for (a in {'width':'', 'height':'', 'border-left-width':'', 'border-top-width':'', 'border-left-style':'', 'border-top-style':'', 'border-right-width':'', 'border-bottom-width':'', 'border-right-style':'', 'border-bottom-style':'', 'padding-top':'', 'padding-left':'', 'padding-bottom':'', 'padding-right':'', 'font-size':'', 'font-family':'', 'font-weight':'', 'font-style':'', 'font-variant':'', 'letter-spacing':'', 'line-height':'', 'vertical-align':'', 'text-align':'', 'text-indent':'', 'text-decoration':'', 'text-transform':'', 'white-space':'', 'word-spacing':''}) {
 				style[a] = $(this).css(a);
 			}
 
