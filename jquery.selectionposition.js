@@ -147,7 +147,7 @@
 				}
 			}
 			else {
-				// Wrapping areas are a lot more tricky and thus CPU time consuming
+				// Wrapping areas are a lot more tricky so they take a lot more CPU time
 
 				// If editedPre is empty add &nbsp; to get minimum height for 1 line.
 				// If editedPost is not empty, add it instead of &nbsp; 
