@@ -6,7 +6,7 @@
  *
  */
 
-// TODO: process() should support CSS:direction property (are different directions written different way in textarea and input fields?).
+// TODO: calculate() should support CSS:direction property (are different directions written different way in textarea and input fields?).
 
 (function($){
 
@@ -77,46 +77,32 @@
 				$('div#'+$(this).attr('id')+'_calculator').css($(this).offset());
 			}
 		},
-		process: function(){
+		calculate: function(data){
 			var text = $(this).val();
-			var pos = this.selectionStart;
-			//var posEnd = this.selectionEnd;
 
-			var pre = '';
-			var post = '';
-			// Fix/Workaround Opera (10.60 linux/ubuntu only? didn't test others) bug
-			// It seems to count every \n as 2 characters instead of one, even tough there is only one character there (no \n\r or anything like that).
-			// Even more! count will break at the end of line, earlier with each NL before it. Like it was starting to count next new line (after selectionStart)
-			// earlier every line. First line is ok, 2nd starts 1 char earlier and end one char earlier, 3rd 2 chars earlier, etc...
-			// When we add count new lines it fixes beginning of line, but we still get cut off line at the end. There is "jump" char at the end that is not counted
-			// (or at which next new line starts being counted?).
-			// It is like there were two "frames" in memory. One with real text, and other which is virtual and counts every \n twice.
-			// With each \n they are more and more misaligned. That would explain why "jumpy" character moves to the beginning of line with every new line.
-			// UPDATE: looks like 10.61 fixed this problem.
-			if ($.browser.opera && $.browser.version < 10.61) {
-				// First get whole value and replace every new line with our unlikely to happen string that has length equal 2
-				// (because Opera's selectionStart/End calculator seems to count every new line as two characters, even tough
-				// all other functions like text.length, replace, match, etc... count them correctly as one character).
-				pre = post = text.replace(/\n/g, '');
-				// Now use Opera's incorrect selectionStart to get correct part of value and then put back new line characters and strip any leftovers :).
-				pre = pre.substr(0, pos).replace(//g, "\n").replace(//g, '');
+			if (!data || isNaN(data.start)) {
+				data = {
+					start: this.selectionStart,
+					end: this.selectionEnd,
+					pre: '',
+					post: '',
+					editedWordPre: '',
+					editedWordPost: '',
+					editedLinePre: ''
+				};
+				data.pre = text.substr(0, data.start);
+				data.end = data.end - data.start;
+				data.post = (data.end > 0 ? text.substr(data.start, data.end) : text.substr(data.start));
 
-				// Same for "next characters after selectionStart but before any white space" variable.
-				post = post.substr(pos).replace(//g, "\n").replace(//g, '');
+				data.editedWordPre = data.pre.match(/[^\s]+$/);
+				data.editedWordPre = (data.editedWordPre && data.editedWordPre.length > 0 ? data.editedWordPre[0] : '');
+
+				data.editedWordPost = data.post.match(/^[^\s]+/);
+				data.editedWordPost = (data.editedWordPost && data.editedWordPost.length > 0 ? data.editedWordPost[0] : '');
+
+				data.editedLinePre = data.pre.match(/[^\n]+$/);
+				data.editedLinePre = (data.editedLinePre && data.editedLinePre.length > 0 ? data.editedLinePre[0] : '');
 			}
-			else {
-				pre = text.substr(0, pos);
-				post = text.substr(pos);
-			}
-
-			var editedPre = pre.match(/[^\s]+$/);
-			editedPre = (editedPre && editedPre.length > 0 ? editedPre[0] : '');
-
-			var editedPost = post.match(/^[^\s]+/);
-			editedPost = (editedPost && editedPost.length > 0 ? editedPost[0] : '');
-
-			var editedLinePre = pre.match(/[^\n]+$/);
-			editedLinePre = (editedLinePre && editedLinePre.length > 0 ? editedLinePre[0] : '');
 
 			// Now we can calculate stuff :).
 			var id = 'div#'+$(this).attr('id')+'_calculator';
@@ -128,13 +114,13 @@
 			if (!isWrap) {
 				// Nowrap areas are easy to calculate with div's width and height set to auto
 
-				// If editedPre is empty add &nbsp; to get minimum height for 1 line.
-				// Also replace new lines with <br> :).
-				$(id).html((editedPre.length < 1 ? pre+'&nbsp;' : pre).replace(/\n/g, '<br />')).width('auto').height('auto');
+				// If editedWordPre is empty add &nbsp; to get minimum height for 1 line.
+				// Also replace new lines with <br/> :).
+				$(id).html((data.editedWordPre.length < 1 ? data.pre+'&nbsp;' : data.pre).replace(/\n/g, '<br />')).width('auto').height('auto');
 				y = $(id).height();
 
-				// Get width of line without editedPre part (we want to show popup at the beginning of the word, not at the cursor/carriage point)
-				x = $(id).html(editedLinePre.substr(0, editedLinePre.length - editedPre.length)).width();
+				// Get width of line without editedWordPre part (we want to show popup at the beginning of the word, not at the cursor/carriage point)
+				x = $(id).html(data.editedLinePre.substr(0, data.editedLinePre.length - data.editedWordPre.length)).width();
 
 				// Only WebKit (at least Chromium linux/ubuntu) has scrollLeft updated for INPUT fields :(
 				// We could try to calculate difference between auto and hardcoded widths, but there is no way to know point of edit in input field.
@@ -151,14 +137,14 @@
 			else {
 				// Wrapping areas are a lot more tricky so they take a lot more CPU time
 
-				// If editedPre is empty add &nbsp; to get minimum height for 1 line.
-				// If editedPost is not empty, add it instead of &nbsp; 
+				// If editedWordPre is empty add &nbsp; to get minimum height for 1 line.
+				// If editedWordPost is not empty, add it instead of &nbsp; 
 				// so popup will not cover line in case where pre could fit in previous line, but with post it won't,
 				// e.g., "line of text" is split into "line of" and "text", but "line of te" is not split.
-				// So without using editedPost, we would make popup stay at first line, instead of going to 2nd.
+				// So without using editedWordPost, we would make popup stay at first line, instead of going to 2nd.
 				// Also replace new lines with <br> :).
 				// Use min of this.scrollWith and this.width(). When scrollbar is visible, scrollWidth is smaller than width.
-				$(id).html((editedPre.length < 1 ? pre+(editedPost.length > 0 ? editedPost : '&nbsp;') : pre + editedPost).replace(/\n/g, '<br />')).width(Math.min(this.scrollWidth, $(this).width())).height('auto');
+				$(id).html((data.editedWordPre.length < 1 ? data.pre+(data.editedWordPost.length > 0 ? data.editedWordPost : '&nbsp;') : data.pre + data.editedWordPost).replace(/\n/g, '<br />')).width(Math.min(this.scrollWidth, $(this).width())).height('auto');
 				y = $(id).height();
 
 				// Now we need to:
@@ -167,7 +153,7 @@
 				// 3. Loop until height of what's left is changed between loops.
 				//    That will mean that what's left are pseudo-lines (or just one such line) before last pseudo-line.
 				// 4. Just get width of last pseudo-line and we're done :).
-				var pseudoLines = editedLinePre + editedPost;
+				var pseudoLines = data.editedLinePre + data.editedWordPost;
 				$(id).html(pseudoLines);
 				var h = $(id).height();
 				var pseudoLinesPre = pseudoLines;
@@ -182,16 +168,12 @@
 					pseudoLines = pseudoLinesPre;
 				}
 
-				x = $(id).html(editedLinePre.substr(pseudoLinesPre.length, editedLinePre.length - editedPre.length - pseudoLinesPre.length)).width('auto').width();
+				x = $(id).html(data.editedLinePre.substr(pseudoLinesPre.length, data.editedLinePre.length - data.editedWordPre.length - pseudoLinesPre.length)).width('auto').width();
 			}
 
-			return {
-				left: (x - this.scrollLeft),
-				top: (y - this.scrollTop),
-				editedLinePre: editedLinePre,
-				editedWordPre: editedPre,
-				editedWordPost: editedPost
-			};
+			data.left = (x - this.scrollLeft);
+			data.top = (y - this.scrollTop);
+			return data;
 		},
 		stop: function(){
 			// Nothing here anymore
@@ -203,7 +185,7 @@
 		}
 	};
 
-	$.fn.selectionPosition = function(clearCache) {
+	$.fn.selectionPosition = function(clearCache, data) {
 		var elem = this[0];
 		if (!elem || !elem.ownerDocument) {
 			return null;
@@ -212,7 +194,7 @@
 		var t = $(elem).position();
 
 		if (clearCache) selectionPosition.start.call(elem);
-		var s = selectionPosition.process.call(elem);
+		var s = selectionPosition.calculate.call(elem, data);
 
 		s.left = Math.max(t.left, t.left + s.left);
 		s.top += t.top;
@@ -220,7 +202,7 @@
 		return s;
 	}
 
-	$.fn.selectionOffset = function(clearCache) {
+	$.fn.selectionOffset = function(clearCache, data) {
 		var elem = this[0];
 		if (!elem || !elem.ownerDocument) {
 			return null;
@@ -229,7 +211,7 @@
 		var t = $(elem).offset();
 
 		if (clearCache) selectionPosition.start.call(elem);
-		var s = selectionPosition.process.call(elem);
+		var s = selectionPosition.calculate.call(elem, data);
 
 		s.left = Math.max(t.left, t.left + s.left);
 		s.top += t.top;
