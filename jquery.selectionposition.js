@@ -78,12 +78,13 @@
 			}
 		},
 		calculate: function(data){
-			var text = $(this).val();
-
 			if (!data || isNaN(data.start)) {
+				var text = $(this).val(),
+					selection = $(this).selectionRange();
+
 				data = {
-					start: this.selectionStart,
-					end: this.selectionEnd,
+					start: selection.start,
+					end: selection.end,
 					pre: '',
 					post: '',
 					editedWordPre: '',
@@ -184,6 +185,74 @@
 			$('div#'+$(this).attr('id')+'_calculator').remove();
 		}
 	};
+
+	// If start and end are null, then it returns selection range object.
+	// If start and end are numbers, then it selects text.
+	$.fn.selectionRange = function(start, end) {
+		var elem = this[0];
+		if (!elem || !elem.ownerDocument) {
+			return null;
+		}
+
+		// Get range
+		if (isNaN(start) && isNaN(end)) {
+			// Fix/Workaround Opera (10.60 and 11.11 linux/ubuntu only?) bug
+			// It seems to count every \n as 2 characters instead of one, even tough there is only one character there (no \n\r or anything like that).
+			// Even more! count will break at the end of line, earlier with each NL before it. Like it was starting to count next new line (after selectionStart)
+			// earlier every line. First line is ok, 2nd starts 1 char earlier and end one char earlier, 3rd 2 chars earlier, etc...
+			// When we add count new lines it fixes beginning of line, but we still get cut off line at the end. There is "jump" char at the end that is not counted
+			// (or at which next new line starts being counted?).
+			// It is like there were two "frames" in memory. One with real text, and other, which is virtual, that counts every \n twice.
+			// With each \n they are more and more misaligned. That would explain why "jumpy" character moves to the beginning of line with every new line.
+			if ($.browser.opera) {
+				// First get whole value and replace every new line with our unlikely to happen string that has length equal 2
+				// (because Opera's selectionStart/End calculator seems to count every new line as two characters, even tough
+				// all other functions like text.length, replace, match, etc... count them correctly as one character).
+				var text = $(elem).val().replace(/\r?\n/g, '');
+
+				// Now use Opera's incorrect selectionStart to get correct part of value and then put back new line characters and strip any leftovers :).
+				var pre = text.substr(0, elem.selectionStart).replace(//g, "\n").replace(//g, '');
+
+				// Same for "next characters after selectionStart but before any white space" variable.
+				var post = text.substr(0, elem.selectionEnd).replace(//g, "\n").replace(//g, '');
+
+				return {
+					start: pre.length,
+					end: post.length
+				}
+			}
+			else {
+				return {
+					start: elem.selectionStart,
+					end: elem.selectionEnd
+				}
+			}
+		}
+		// Set range
+		else {
+			if (typeof start == 'object' && (!isNaN(start.start) || !isNaN(start.end))) {
+				end = start.end ? start.end : start.start;
+				start = start.start;
+			}
+
+			if (isNaN(start)) start = 0;
+			if (isNaN(end)) {
+				end = start;
+			}
+
+			// Workaround Opera's bug (read above for more info)
+			if ($.browser.opera) {
+				var text = $(elem).val().replace(/\r\n/g, "\n"),
+					pre = text.substr(0, start).replace(/\n/g, ''),
+					post = text.substr(0, end).replace(/\n/g, '');
+
+				elem.setSelectionRange(pre.length, post.length);
+			}
+			else {
+				elem.setSelectionRange(start, end);
+			}
+		}
+	}
 
 	$.fn.selectionPosition = function(clearCache, data) {
 		var elem = this[0];
