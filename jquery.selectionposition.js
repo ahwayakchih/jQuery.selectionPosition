@@ -33,9 +33,7 @@
 
 			// Mozilla/Firefox (3.6.7 linux/ubuntu only?) does not support nowrap.
 			if (this.nodeName == 'TEXTAREA' && $(this).css('white-space') == 'nowrap' && $.browser.mozilla) {
-				isWrap = true;
-				var css = {'white-space': 'pre-wrap', 'word-wrap': 'break-word'};
-				$(this).css(css);
+				$(this).css({'white-space': 'pre-wrap', 'word-wrap': 'break-word'});
 			}
 
 			// This is first time we're focused. Browsers seem to always go to end of text, when focus is done with keyboard (TAB key :).
@@ -114,6 +112,7 @@
 			var y = 0;
 			if (!isWrap) {
 				// Nowrap areas are easy to calculate with div's width and height set to auto
+				$(id).css('white-space', 'nowrap');
 
 				// If editedWordPre is empty add &nbsp; to get minimum height for 1 line.
 				// Also replace new lines with <br/> :).
@@ -137,6 +136,7 @@
 			}
 			else {
 				// Wrapping areas are a lot more tricky so they take a lot more CPU time
+				$(id).css('white-space', 'pre-wrap');
 
 				// If editedWordPre is empty add &nbsp; to get minimum height for 1 line.
 				// If editedWordPost is not empty, add it instead of &nbsp; 
@@ -145,7 +145,7 @@
 				// So without using editedWordPost, we would make popup stay at first line, instead of going to 2nd.
 				// Also replace new lines with <br> :).
 				// Use min of this.scrollWith and this.width(). When scrollbar is visible, scrollWidth is smaller than width.
-				$(id).html((data.editedWordPre.length < 1 ? data.pre+(data.editedWordPost.length > 0 ? data.editedWordPost : '&nbsp;') : data.pre + data.editedWordPost).replace(/\n/g, '<br />')).width(Math.min(this.scrollWidth, $(this).width())).height('auto');
+				$(id).html((data.editedWordPre.length < 1 ? data.pre+(data.editedWordPost.length > 0 ? data.editedWordPost : '&nbsp;') : data.pre + data.editedWordPost)).width(Math.min(this.scrollWidth, $(this).width())).height('auto');
 				y = $(id).height();
 
 				// Now we need to:
@@ -159,7 +159,8 @@
 				var h = $(id).height();
 				var pseudoLinesPre = pseudoLines;
 				while (pseudoLinesPre.length > 0) {
-					pseudoLinesPre = pseudoLines.replace(/[^\s]+\s*$/, '');
+					pseudoLinesPre = pseudoLines.replace(/([^\s]+|^)\s*$/, '');
+
 					// Break if we can't cut off anything more
 					if (pseudoLinesPre.length == pseudoLines.length) break;
 
@@ -204,6 +205,10 @@
 			// (or at which next new line starts being counted?).
 			// It is like there were two "frames" in memory. One with real text, and other, which is virtual, that counts every \n twice.
 			// With each \n they are more and more misaligned. That would explain why "jumpy" character moves to the beginning of line with every new line.
+			// Update: more info at http://dev.opera.com/forums/topic/488381
+			//         Looks like Opera internally always uses \r\n, but text accessed by JavaScript uses \n.
+			//         That is why selectionStart & selectionEnd are different than one could assume by reading text :(.
+			//         Some additional explanations here too: http://lists.whatwg.org/pipermail/whatwg-whatwg.org/2011-January/029669.html
 			if ($.browser.opera) {
 				// First get whole value and replace every new line with our unlikely to happen string that has length equal 2
 				// (because Opera's selectionStart/End calculator seems to count every new line as two characters, even tough
