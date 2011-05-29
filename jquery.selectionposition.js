@@ -48,7 +48,7 @@
 
 			var exists = $('div#'+id+'_calculator');
 			if (!exists || exists.length < 1) {
-				$(this).before($('<div class="_calculator" id="'+id+'_calculator"></div>'));
+				$('body').prepend($('<div class="_calculator" id="'+id+'_calculator"></div>'));
 				$('div#'+id+'_calculator').css({'position': 'absolute', 'z-index' : '0', 'top': 0, 'left': -9000});
 			}
 
@@ -62,7 +62,7 @@
 				style[a] = $(this).css(a);
 			}
 
-			$('div#'+$(this).attr('id')+'_calculator').html($(this).val().replace(/\n/g, '<br />')).css(style);
+			$('div#'+$(this).attr('id')+'_calculator').html($(this).val()).css(style);
 
 			// Calculate margin, which will handle border and padding widths for us.
 			// That way we don't have to add them to offset every time we calculate popup's position.
@@ -140,37 +140,21 @@
 
 				// If editedWordPre is empty add &nbsp; to get minimum height for 1 line.
 				// If editedWordPost is not empty, add it instead of &nbsp; 
-				// so popup will not cover line in case where pre could fit in previous line, but with post it won't,
+				// so popup will not cover the line in case where pre could fit in previous line, but with post it won't,
 				// e.g., "line of text" is split into "line of" and "text", but "line of te" is not split.
 				// So without using editedWordPost, we would make popup stay at first line, instead of going to 2nd.
-				// Also replace new lines with <br> :).
-				// Use min of this.scrollWith and this.width(). When scrollbar is visible, scrollWidth is smaller than width.
-				$(id).html((data.editedWordPre.length < 1 ? data.pre+(data.editedWordPost.length > 0 ? data.editedWordPost : '&nbsp;') : data.pre + data.editedWordPost)).width(Math.min(this.scrollWidth, $(this).width())).height('auto');
-				y = $(id).height();
+				var word = data.editedWordPre + data.editedWordPost;
+				// Wrap whole word with span, so we can get span.left. If word is wraped to next line, we will get x=0.
+				// Use Math.min of this.scrollWith and this.width(). When scrollbar is visible, scrollWidth is smaller than width.
+				$(id).html(data.pre.substr(0, data.pre.length - data.editedWordPre.length) + '<span>'+(word.length < 1 ? '&nbsp;' : word)+'</span>').width(Math.min(this.scrollWidth, $(this).width())).height('auto');
 
-				// Now we need to:
-				// 1. Get "real line"
-				// 2. Start loop and cut off last words from it and check height of what's left.
-				// 3. Loop until height of what's left is changed between loops.
-				//    That will mean that what's left are pseudo-lines (or just one such line) before last pseudo-line.
-				// 4. Just get width of last pseudo-line and we're done :).
-				var pseudoLines = data.editedLinePre + data.editedWordPost;
-				$(id).html(pseudoLines);
-				var h = $(id).height();
-				var pseudoLinesPre = pseudoLines;
-				while (pseudoLinesPre.length > 0) {
-					pseudoLinesPre = pseudoLines.replace(/([^\s]+|^)\s*$/, '');
-
-					// Break if we can't cut off anything more
-					if (pseudoLinesPre.length == pseudoLines.length) break;
-
-					// Break if height changed (meaning that we just found out what part of text is last of pseudo-lines)
-					if (h != $(id).html(pseudoLinesPre).height()) break;
-
-					pseudoLines = pseudoLinesPre;
+				var p = $(id).find('span');
+				if (p && p.length > 0) {
+					var pos = p.position();
+					x = pos.left;
 				}
 
-				x = $(id).html(data.editedLinePre.substr(pseudoLinesPre.length, data.editedLinePre.length - data.editedWordPre.length - pseudoLinesPre.length)).width('auto').width();
+				y = $(id).height();
 			}
 
 			data.left = (x - this.scrollLeft);
