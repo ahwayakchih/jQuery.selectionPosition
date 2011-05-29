@@ -50,7 +50,7 @@
 
 			var exists = $('div#'+id+'_calculator');
 			if (!exists || exists.length < 1) {
-				$('body').prepend($('<div class="_calculator" id="'+id+'_calculator"></div>'));
+				field.before($('<div class="_calculator" id="'+id+'_calculator"></div>'));
 				$('div#'+id+'_calculator').css({'position': 'absolute', 'z-index' : '0', 'top': 0, 'left': -9000});
 			}
 
@@ -62,7 +62,7 @@
 			if (!field.hasClass('selectionPosition-ready')) selectionPosition.construct.call(this);
 
 			var style = {};
-			for (a in {'width':'', 'height':'', 'border-left-width':'', 'border-top-width':'', 'border-left-style':'', 'border-top-style':'', 'border-right-width':'', 'border-bottom-width':'', 'border-right-style':'', 'border-bottom-style':'', 'padding-top':'', 'padding-left':'', 'padding-bottom':'', 'padding-right':'', 'font-size':'', 'font-family':'', 'font-weight':'', 'font-style':'', 'font-variant':'', 'letter-spacing':'', 'line-height':'', 'vertical-align':'', 'text-align':'', 'text-indent':'', 'text-decoration':'', 'text-transform':'', 'white-space':'', 'word-spacing':''}) {
+			for (a in {'width':'', 'height':'', 'border-collapse':'', 'border-left-width':'', 'border-top-width':'', 'border-left-style':'', 'border-top-style':'', 'border-right-width':'', 'border-bottom-width':'', 'border-right-style':'', 'border-bottom-style':'', 'padding-top':'', 'padding-left':'', 'padding-bottom':'', 'padding-right':'', 'font-size':'', 'font-family':'', 'font-weight':'', 'font-style':'', 'font-variant':'', 'letter-spacing':'', 'line-height':'', 'vertical-align':'', 'text-align':'', 'text-indent':'', 'text-decoration':'', 'text-transform':'', 'white-space':'', 'word-spacing':''}) {
 				style[a] = field.css(a);
 			}
 
@@ -76,7 +76,7 @@
 			$('div#'+field.attr('id')+'_popup').css(style);
 
 			if (field.hasClass('debug')) {
-				$('div#'+field.attr('id')+'_calculator').css(field.offset());
+				$('div#'+field.attr('id')+'_calculator').css(field.position());
 			}
 		},
 		calculate: function(data){
@@ -153,7 +153,9 @@
 
 				// Wrap whole word with span, so we can get span.left. If word is wraped to next line, we will get x=0.
 				// Use Math.min of this.scrollWith and this.width(). When scrollbar is visible, scrollWidth is smaller than width.
-				cal.html((data.editedWordPre.length > 0 ? data.pre.substr(0, data.pre.length - data.editedWordPre.length) : data.pre) + '<span>' + word + '</span>').width(Math.min(this.scrollWidth, field.width())).height('auto');
+				// On Firefox (3.6.17, Ubuntu 10.04) our calculator and textarea have a tiny bit different text width. No idea why :(.
+				var mod = ($.browser.mozilla ? -2 : 0);
+				cal.html((data.editedWordPre.length > 0 ? data.pre.substr(0, data.pre.length - data.editedWordPre.length) : data.pre) + '<span>' + word + '</span>').width(Math.min(this.scrollWidth, field.width())+mod).height('auto');
 
 				var span = cal.find('span');
 				if (span && span.length > 0) {
