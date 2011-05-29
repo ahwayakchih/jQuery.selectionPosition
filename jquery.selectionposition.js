@@ -12,28 +12,30 @@
 
 	var selectionPosition = {
 		construct: function(){
-			var id = $(this).attr('id');
+			var field = $(this),
+				id = field.attr('id');
+
 			if (!id) {
-				id = $(this).attr('name');
+				id = field.attr('name');
 				if (!id) {
 					id = String(new Date().getTime()) + String(Math.random()).replace('0.', '');
 				}
-				$(this).attr('id', id);
+				field.attr('id', id);
 			}
 
 			// This has to go first because Firefox seems to screw up (ignores our setSelectionRange below) otherwise.
-			if ($(this).hasClass('debug')) {
-				var z = $(this).css('z-index');
+			if (field.hasClass('debug')) {
+				var z = field.css('z-index');
 				if (z == 'auto') z = 10; // TODO: check what z-index is in different browsers. Chrome gives 0 by default. FF and Opera set it to "auto", whatever that means :(.
 
-				var p = $(this).css('position');
+				var p = field.css('position');
 				if (p == 'static') p = 'relative';
-				$(this).css({'z-index': Math.max(10, z), 'position': p});
+				field.css({'z-index': Math.max(10, z), 'position': p});
 			}
 
 			// Mozilla/Firefox (3.6.7 linux/ubuntu only?) does not support nowrap.
-			if (this.nodeName == 'TEXTAREA' && $(this).css('white-space') == 'nowrap' && $.browser.mozilla) {
-				$(this).css({'white-space': 'pre-wrap', 'word-wrap': 'break-word'});
+			if (this.nodeName == 'TEXTAREA' && field.css('white-space') == 'nowrap' && $.browser.mozilla) {
+				field.css({'white-space': 'pre-wrap', 'word-wrap': 'break-word'});
 			}
 
 			// This is first time we're focused. Browsers seem to always go to end of text, when focus is done with keyboard (TAB key :).
@@ -44,7 +46,7 @@
 			// = point at which user clicked in Opera
 			// = length of text value in Firefox
 			// TODO: Fix Firefox which will always catch this, even when user clicks inside area to select some text in the middle :(
-			if (this.selectionStart >= $(this).val().length) this.setSelectionRange(0,0);
+			if (this.selectionStart >= field.val().length) this.setSelectionRange(0,0);
 
 			var exists = $('div#'+id+'_calculator');
 			if (!exists || exists.length < 1) {
@@ -52,33 +54,38 @@
 				$('div#'+id+'_calculator').css({'position': 'absolute', 'z-index' : '0', 'top': 0, 'left': -9000});
 			}
 
-			$(this).addClass('selectionPosition-ready');
+			field.addClass('selectionPosition-ready');
 		},
 		start: function(){
-			if (!$(this).hasClass('selectionPosition-ready')) selectionPosition.construct.call(this);
+			var field = $(this);
+
+			if (!field.hasClass('selectionPosition-ready')) selectionPosition.construct.call(this);
 
 			var style = {};
 			for (a in {'width':'', 'height':'', 'border-left-width':'', 'border-top-width':'', 'border-left-style':'', 'border-top-style':'', 'border-right-width':'', 'border-bottom-width':'', 'border-right-style':'', 'border-bottom-style':'', 'padding-top':'', 'padding-left':'', 'padding-bottom':'', 'padding-right':'', 'font-size':'', 'font-family':'', 'font-weight':'', 'font-style':'', 'font-variant':'', 'letter-spacing':'', 'line-height':'', 'vertical-align':'', 'text-align':'', 'text-indent':'', 'text-decoration':'', 'text-transform':'', 'white-space':'', 'word-spacing':''}) {
-				style[a] = $(this).css(a);
+				style[a] = field.css(a);
 			}
 
-			$('div#'+$(this).attr('id')+'_calculator').html($(this).val()).css(style);
+			$('div#'+field.attr('id')+'_calculator').html(field.val()).css(style);
 
 			// Calculate margin, which will handle border and padding widths for us.
 			// That way we don't have to add them to offset every time we calculate popup's position.
 			style = {};
-			style['margin-top'] = (($(this).css('border-top-width').replace('px','') * 1) + ($(this).css('padding-top').replace('px','') * 1)) + 'px';
-			style['margin-left'] = (($(this).css('border-left-width').replace('px','') * 1) + ($(this).css('padding-left').replace('px','') * 1)) + 'px';
-			$('div#'+$(this).attr('id')+'_popup').css(style);
+			style['margin-top'] = ((field.css('border-top-width').replace('px','') * 1) + (field.css('padding-top').replace('px','') * 1)) + 'px';
+			style['margin-left'] = ((field.css('border-left-width').replace('px','') * 1) + (field.css('padding-left').replace('px','') * 1)) + 'px';
+			$('div#'+field.attr('id')+'_popup').css(style);
 
-			if ($(this).hasClass('debug')) {
-				$('div#'+$(this).attr('id')+'_calculator').css($(this).offset());
+			if (field.hasClass('debug')) {
+				$('div#'+field.attr('id')+'_calculator').css(field.offset());
 			}
 		},
 		calculate: function(data){
+			var field = $(this),
+				cal = $('div#'+field.attr('id')+'_calculator');
+
 			if (!data || isNaN(data.start)) {
-				var text = $(this).val(),
-					selection = $(this).selectionRange();
+				var text = field.val(),
+					selection = field.selectionRange();
 
 				data = {
 					start: selection.start,
@@ -104,23 +111,21 @@
 			}
 
 			// Now we can calculate stuff :).
-			var id = 'div#'+$(this).attr('id')+'_calculator';
-
-			var isWrap = ($(this).css('white-space') != 'nowrap' && this.nodeName == 'TEXTAREA' ? true : false);
+			var isWrap = (field.css('white-space') != 'nowrap' && this.nodeName == 'TEXTAREA' ? true : false);
 
 			var x = 0;
 			var y = 0;
 			if (!isWrap) {
 				// Nowrap areas are easy to calculate with div's width and height set to auto
-				$(id).css('white-space', 'nowrap');
+				cal.css('white-space', 'nowrap');
 
 				// If editedWordPre is empty add &nbsp; to get minimum height for 1 line.
 				// Also replace new lines with <br/> :).
-				$(id).html((data.editedWordPre.length < 1 ? data.pre+'&nbsp;' : data.pre).replace(/\n/g, '<br />')).width('auto').height('auto');
-				y = $(id).height();
+				cal.html((data.editedWordPre.length < 1 ? data.pre+'&nbsp;' : data.pre).replace(/\n/g, '<br />')).width('auto').height('auto');
+				y = cal.height();
 
 				// Get width of line without editedWordPre part (we want to show popup at the beginning of the word, not at the cursor/carriage point)
-				x = $(id).html(data.editedLinePre.substr(0, data.editedLinePre.length - data.editedWordPre.length)).width();
+				x = cal.html(data.editedLinePre.substr(0, data.editedLinePre.length - data.editedWordPre.length)).width();
 
 				// Only WebKit (at least Chromium linux/ubuntu) has scrollLeft updated for INPUT fields :(
 				// We could try to calculate difference between auto and hardcoded widths, but there is no way to know point of edit in input field.
@@ -128,7 +133,7 @@
 				// point may be at the beginning (when text was scrolled to end and user scrolls it back to beginning), in the middle or at the end
 				// (when user is scrolling it to end).
 				if (this.nodeName == 'INPUT' && !$.browser.webkit) {
-					//var x2 = $(id).css({'width': $(this).width(), 'white-space': 'nowrap'}).width();
+					//var x2 = cal.css({'width': $(this).width(), 'white-space': 'nowrap'}).width();
 					//if (x2 < x) x -= x2;
 					// TODO: find a way to support INPUT fields in browsers other than webkit-based.
 					x = 0;
@@ -136,7 +141,7 @@
 			}
 			else {
 				// Wrapping areas are a lot more tricky so they take a lot more CPU time
-				$(id).css('white-space', 'pre-wrap');
+				cal.css('white-space', 'pre-wrap');
 
 				// If editedWordPre is empty add &nbsp; to get minimum height for 1 line.
 				// If editedWordPost is not empty, add it instead of &nbsp; 
@@ -144,21 +149,24 @@
 				// e.g., "line of text" is split into "line of" and "text", but "line of te" is not split.
 				// So without using editedWordPost, we would make popup stay at first line, instead of going to 2nd.
 				var word = data.editedWordPre + data.editedWordPost;
+				if (word.length < 1) word = '&nbsp;';
+
 				// Wrap whole word with span, so we can get span.left. If word is wraped to next line, we will get x=0.
 				// Use Math.min of this.scrollWith and this.width(). When scrollbar is visible, scrollWidth is smaller than width.
-				$(id).html(data.pre.substr(0, data.pre.length - data.editedWordPre.length) + '<span>'+(word.length < 1 ? '&nbsp;' : word)+'</span>').width(Math.min(this.scrollWidth, $(this).width())).height('auto');
+				cal.html((data.editedWordPre.length > 0 ? data.pre.substr(0, data.pre.length - data.editedWordPre.length) : data.pre) + '<span>' + word + '</span>').width(Math.min(this.scrollWidth, field.width())).height('auto');
 
-				var p = $(id).find('span');
-				if (p && p.length > 0) {
-					var pos = p.position();
+				var span = cal.find('span');
+				if (span && span.length > 0) {
+					var pos = span.position();
 					x = pos.left;
 				}
 
-				y = $(id).height();
+				y = cal.height();
 			}
 
 			data.left = (x - this.scrollLeft);
 			data.top = (y - this.scrollTop);
+
 			return data;
 		},
 		stop: function(){
